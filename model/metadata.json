@@ -1,0 +1,12 @@
+{
+  "nom": "scoring_credit_lgbm",
+  "version_registre": 10,
+  "alias": "champion",
+  "mlflow_run_id": "cd0251a9fecc4032928a390dec64fcad",
+  "mlflow_model_id": "m-0d1aaf905d894323868e40d6de359253",
+  "algorithme": "LGBMClassifier",
+  "seuil_decision": 0.09,
+  "nb_variables": 800,
+  "origine": "https://github.com/matthieudevivie/projet-6---Initiez-vous-au-ML-Ops---partie-1",
+  "sha256_model_pkl": "2d42549d5b060a5fca3e6ccf009eaa36d89cdde87961f20ec0006abaadfa764b"
+}
