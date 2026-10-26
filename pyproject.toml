@@ -1,0 +1,15 @@
+[project]
+name = "projet8"
+version = "0.1.0"
+description = "Mise en production et monitoring du modèle de scoring crédit (OpenClassrooms, projet 8)"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "gradio>=6.30.0",
+    "lightgbm==4.6.0",
+    "numpy==2.5.0",
+    "pandas==2.3.3",
+    "scikit-learn==1.9.0",
+    "scipy==1.18.0",
+    "streamlit>=1.66.1",
+]

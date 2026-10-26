@@ -1,0 +1,31 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environnement et caches
+.ipynb_checkpoints/
+.pytest_cache/
+.DS_Store
+
+# Données (volumineuses, téléchargées depuis Kaggle) et logs de production
+data/
+logs/
+
+# MLflow local
+mlflow.db
+mlruns/
+mlartifacts/
+
+# Configuration locale et secrets
+.env
+
+# OpenClassrooms related files
+cours/*
+instructions/*
