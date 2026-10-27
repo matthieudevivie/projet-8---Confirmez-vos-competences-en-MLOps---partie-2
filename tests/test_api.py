@@ -11,6 +11,12 @@ def test_health(api):
     assert reponse.json() == {"statut": "ok", "modele": "scoring_credit_lgbm", "version": 10}
 
 
+def test_la_racine_renvoie_vers_la_documentation(api):
+    reponse = api.get("/", follow_redirects=False)
+    assert reponse.status_code == 307
+    assert reponse.headers["location"] == "/docs"
+
+
 def test_prediction_d_un_client_valide(api, clients_exemple):
     reponse = api.post("/predict", json=clients_exemple[2])
     assert reponse.status_code == 200

@@ -3,6 +3,8 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.responses import RedirectResponse
+
 
 from api.modele import ModeleScoring
 from api.schemas import Client, Prediction
@@ -20,6 +22,13 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+
+@app.get("/", include_in_schema=False)
+def accueil():
+    """La racine renvoie vers la documentation interactive (page d'accueil du service)."""
+    return RedirectResponse("/docs")
+
 
 
 @app.get("/health")
