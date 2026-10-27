@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   pull_request:
@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  IMAGE: ghcr.io/matthieudevivie/scoring-credit
+
 jobs:
   tests:
     name: tests
@@ -15,14 +18,42 @@ jobs:
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v7
-
       - name: Installer uv
         uses: astral-sh/setup-uv@v10.2.0
         with:
           enable-cache: true
-
       - name: Installer Python et les dépendances
         run: uv sync --locked
-
       - name: Lancer les tests
         run: uv run pytest -v
+
+  image:
+    name: image
+    needs: tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7
+      - name: Construire l'image Docker
+        run: docker build -t "$IMAGE:$GITHUB_SHA" .
+      - name: Démarrer le conteneur et vérifier qu'il répond
+        run: |
+          docker run --detach --name api --publish 7860:7860 "$IMAGE:$GITHUB_SHA"
+          for _ in $(seq 1 30); do
+            curl --silent --fail localhost:7860/health && exit 0
+            sleep 1
+          done
+          docker logs api
+          exit 1
+      - name: Publier l'image sur le registre de GitHub
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GITHUB_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker tag "$IMAGE:$GITHUB_SHA" "$IMAGE:latest"
+          docker push "$IMAGE:$GITHUB_SHA"
+          docker push "$IMAGE:latest"

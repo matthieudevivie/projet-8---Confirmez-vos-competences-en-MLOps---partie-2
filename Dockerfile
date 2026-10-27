@@ -1,4 +1,4 @@
-# Image de production de l'API de scoring (Hugging Face Spaces, ou tout hôte Docker)
+# Image de production de l'API de scoring (Render, ou tout hôte Docker)
 FROM python:3.13.12-slim
 
 # LightGBM a besoin de la bibliothèque OpenMP, absente de l'image slim
@@ -9,7 +9,7 @@ RUN apt-get update \
 # uv, à la même version que sur le poste de développement
 COPY --from=ghcr.io/astral-sh/uv:0.11.3 /uv /bin/uv
 
-# Hugging Face Spaces exécute le conteneur avec l'utilisateur 1000 : on ne tourne pas en root
+# Moindre privilège : le conteneur ne tourne pas en root, mais avec un utilisateur dédié (uid 1000)
 RUN useradd --create-home --uid 1000 user
 USER user
 WORKDIR /home/user/app
