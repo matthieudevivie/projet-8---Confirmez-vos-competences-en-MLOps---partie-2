@@ -5,10 +5,16 @@ import pytest
 from api import schemas
 
 
-def test_health(api):
+def test_health(api, monkeypatch):
+    monkeypatch.delenv("COMMIT", raising=False)  # le test ne dépend pas de l'environnement de la machine
     reponse = api.get("/health")
     assert reponse.status_code == 200
-    assert reponse.json() == {"statut": "ok", "modele": "scoring_credit_lgbm", "version": 10}
+    assert reponse.json() == {"statut": "ok", "modele": "scoring_credit_lgbm", "version": 10, "commit": "local"}
+
+
+def test_health_indique_le_commit_deploye(api, monkeypatch):
+    monkeypatch.setenv("COMMIT", "7d6a990")
+    assert api.get("/health").json()["commit"] == "7d6a990"
 
 
 def test_la_racine_renvoie_vers_la_documentation(api):

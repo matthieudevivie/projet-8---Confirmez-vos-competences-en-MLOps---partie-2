@@ -10,6 +10,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/matthieudevivie/scoring-credit
+  URL_PRODUCTION: https://scoring-credit.onrender.com
 
 jobs:
   tests:
@@ -38,7 +39,7 @@ jobs:
       - name: Récupérer le code
         uses: actions/checkout@v7
       - name: Construire l'image Docker
-        run: docker build -t "$IMAGE:$GITHUB_SHA" .
+        run: docker build --build-arg COMMIT="$GITHUB_SHA" -t "$IMAGE:$GITHUB_SHA" .
       - name: Démarrer le conteneur et vérifier qu'il répond
         run: |
           docker run --detach --name api --publish 7860:7860 "$IMAGE:$GITHUB_SHA"
@@ -57,3 +58,30 @@ jobs:
           docker tag "$IMAGE:$GITHUB_SHA" "$IMAGE:latest"
           docker push "$IMAGE:$GITHUB_SHA"
           docker push "$IMAGE:latest"
+
+  deploy:
+    name: deploy
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ env.URL_PRODUCTION }}
+    steps:
+      - name: Demander à Render de déployer l'image de ce commit
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: curl --fail --silent --show-error --get --data-urlencode "imgURL=$IMAGE:$GITHUB_SHA" "$RENDER_DEPLOY_HOOK"
+      - name: Attendre que la nouvelle version réponde en production
+        run: |
+          for _ in $(seq 1 60); do
+            commit=$(curl --silent --fail "$URL_PRODUCTION/health" | jq --raw-output .commit || true)
+            if [ "$commit" = "$GITHUB_SHA" ]; then
+              echo "Version $GITHUB_SHA en ligne sur $URL_PRODUCTION"
+              exit 0
+            fi
+            echo "En production : ${commit:-aucune réponse}, en attente de $GITHUB_SHA"
+            sleep 10
+          done
+          echo "La nouvelle version n'a pas répondu en 10 minutes"
+          exit 1

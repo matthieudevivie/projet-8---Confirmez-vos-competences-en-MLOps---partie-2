@@ -27,5 +27,10 @@ RUN uv sync --locked --no-dev
 COPY --chown=user api/ api/
 COPY --chown=user model/ model/
 
+# Commit du code, transmis par le CI : /health indique ainsi quelle version tourne
+ARG COMMIT=local
+ENV COMMIT=$COMMIT
+
+
 EXPOSE 7860
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860"]

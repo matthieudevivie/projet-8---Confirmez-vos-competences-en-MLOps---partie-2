@@ -1,10 +1,10 @@
 """API de scoring crédit : point d'entrée FastAPI."""
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
-
 
 from api.modele import ModeleScoring
 from api.schemas import Client, Prediction
@@ -30,12 +30,16 @@ def accueil():
     return RedirectResponse("/docs")
 
 
-
 @app.get("/health")
 def health(request: Request):
-    """Vérifie que l'API répond et indique le modèle chargé."""
+    """Vérifie que l'API répond, et indique le modèle chargé et le commit du code déployé."""
     modele = request.app.state.modele
-    return {"statut": "ok", "modele": modele.metadata["nom"], "version": modele.metadata["version_registre"]}
+    return {
+        "statut": "ok",
+        "modele": modele.metadata["nom"],
+        "version": modele.metadata["version_registre"],
+        "commit": os.environ.get("COMMIT", "local"),
+    }
 
 
 @app.post("/predict", response_model=Prediction)
