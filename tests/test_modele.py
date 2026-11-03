@@ -15,6 +15,13 @@ def test_le_modele_attend_800_variables(modele):
     assert len(modele.variables) == 800
 
 
+def test_variables_surveillees(modele):
+    variables = modele.variables_surveillees()
+    assert len(variables) == 12
+    assert variables[0] == "EXT_SOURCE_3"                                   # la plus importante du modèle
+    assert [modele.types[nom] for nom in variables[-2:]] == ["boolean", "boolean"]   # pour le chi²
+
+
 def test_le_seuil_vient_des_metadonnees(modele):
     assert modele.seuil == 0.09
 

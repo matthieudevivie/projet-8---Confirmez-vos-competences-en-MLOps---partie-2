@@ -26,6 +26,7 @@ RUN uv sync --locked --no-dev
 # Puis le code et le modèle, qui changent plus souvent
 COPY --chown=user api/ api/
 COPY --chown=user model/ model/
+COPY --chown=user rapports/ rapports/
 
 # Commit du code, transmis par le CI : /health indique ainsi quelle version tourne
 ARG COMMIT=local

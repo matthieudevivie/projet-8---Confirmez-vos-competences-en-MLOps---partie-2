@@ -29,6 +29,18 @@ class ModeleScoring:
         self.modele = pickle.loads(contenu)
         self.seuil = self.metadata["seuil_decision"]
         self.variables = list(self.modele.feature_name_)
+        self.types = {variable["name"]: variable["type"] for variable in lire_signature(dossier)}
+
+
+    def variables_surveillees(self, n_top=10, n_categorielles=2) -> list[str]:
+        """Les variables dont on surveille la dérive : le top du gain, plus des variables 0/1 pour le chi²."""
+        importances = pd.Series(
+            self.modele.booster_.feature_importance(importance_type="gain"), index=self.variables
+        ).sort_values(ascending=False)
+        top = importances.head(n_top).index.tolist()
+        categorielles = [nom for nom in importances.index if self.types[nom] == "boolean"][:n_categorielles]
+        return top + categorielles
+
 
     def predire(self, client: dict) -> float:
         """Probabilité de défaut d'un client (dictionnaire variable → valeur)."""

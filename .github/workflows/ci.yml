@@ -49,6 +49,8 @@ jobs:
           done
           docker logs api
           exit 1
+      - name: Vérifier que le rapport de drift est dans l'image
+        run: curl --silent --fail --output /dev/null localhost:7860/drift
       - name: Publier l'image sur le registre de GitHub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:

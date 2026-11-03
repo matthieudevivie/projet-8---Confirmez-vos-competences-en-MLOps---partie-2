@@ -2,7 +2,7 @@
 
 import pytest
 
-from api import schemas
+from api import main, schemas
 
 
 def test_health(api, monkeypatch):
@@ -21,6 +21,20 @@ def test_la_racine_renvoie_vers_la_documentation(api):
     reponse = api.get("/", follow_redirects=False)
     assert reponse.status_code == 307
     assert reponse.headers["location"] == "/docs"
+
+
+def test_drift_renvoie_le_rapport_evidently(api):
+    reponse = api.get("/drift")
+    assert reponse.status_code == 200
+    assert reponse.headers["content-type"].startswith("text/html")
+    assert "var metric_" in reponse.text  # les résultats d'Evidently, intégrés à la page
+
+
+def test_drift_sans_rapport(api, monkeypatch, tmp_path):
+    monkeypatch.setattr(main, "RAPPORT_DRIFT", tmp_path / "absent.html")
+    reponse = api.get("/drift")
+    assert reponse.status_code == 404
+    assert reponse.json() == {"detail": "Aucun rapport de drift n'a encore été produit."}
 
 
 def test_prediction_d_un_client_valide(api, clients_exemple):
