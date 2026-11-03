@@ -4,18 +4,20 @@ import os
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
+from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from starlette.concurrency import run_in_threadpool
 
 from api.journal import Journal
 from api.modele import ModeleScoring
 from api.schemas import Client, Prediction
 
+RAPPORT_DRIFT = Path(__file__).resolve().parent.parent / "rapports" / "rapport_drift.html"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -89,6 +91,14 @@ def health(request: Request):
         "version": modele.metadata["version_registre"],
         "commit": os.environ.get("COMMIT", "local"),
     }
+
+
+@app.get("/drift", response_class=FileResponse)
+def rapport_drift():
+    """Le dernier rapport de data drift (Evidently), produit par notebooks/analyse_drift.ipynb."""
+    if not RAPPORT_DRIFT.exists():
+        raise HTTPException(status_code=404, detail="Aucun rapport de drift n'a encore été produit.")
+    return FileResponse(RAPPORT_DRIFT, media_type="text/html")
 
 
 @app.post("/predict", response_model=Prediction)
