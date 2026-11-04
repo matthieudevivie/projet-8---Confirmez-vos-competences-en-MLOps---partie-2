@@ -165,6 +165,27 @@ L'API fonctionne normalement : 1,8 % d'erreurs, toutes des 422 attendues, et une
 6,9 ms. Le modèle peut donc rester en production, sous surveillance. Le plan d'action est détaillé
 à la fin du notebook.
 
+## Tableau de bord
+
+```bash
+uv run streamlit run dashboard/app.py
+```
+
+Il lit les appels journalisés (`logs/appels.db`) et les compare aux données d'entraînement
+(`data/reference.parquet`) : il tourne donc en local, à côté de la base. Le curseur choisit la
+fenêtre analysée (les 500 derniers appels par défaut, la taille retenue dans le notebook).
+
+| Partie | Ce qu'elle montre |
+|---|---|
+| Indicateurs clés | Nombre d'appels, taux d'erreur, taux de refus, latence médiane et p99, temps d'inférence moyen |
+| Distribution des scores | Scores de production et de référence, seuil de décision, PSI des scores et variation du taux de refus |
+| Temps de réponse | Latence totale et temps d'inférence au fil des appels, répartition des statuts HTTP |
+| Dérive des variables | PSI et écart de valeurs manquantes des 12 variables surveillées, colorés selon la règle d'alerte |
+
+Les calculs sont dans [`dashboard/indicateurs.py`](dashboard/indicateurs.py), testés par
+[`tests/test_indicateurs.py`](tests/test_indicateurs.py) ; l'affichage dans [`dashboard/app.py`](dashboard/app.py).
+
+
 ## Avancement
 
 - [x] Étape 1 — Dépôt Git et structure du projet
