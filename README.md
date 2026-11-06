@@ -182,6 +182,8 @@ fenêtre analysée (les 500 derniers appels par défaut, la taille retenue dans 
 | Temps de réponse | Latence totale et temps d'inférence au fil des appels, répartition des statuts HTTP |
 | Dérive des variables | PSI et écart de valeurs manquantes des 12 variables surveillées, colorés selon la règle d'alerte |
 
+![Tableau de bord de monitoring](captures/tableau_de_bord.png)
+
 Les calculs sont dans [`dashboard/indicateurs.py`](dashboard/indicateurs.py), testés par
 [`tests/test_indicateurs.py`](tests/test_indicateurs.py) ; l'affichage dans [`dashboard/app.py`](dashboard/app.py).
 
