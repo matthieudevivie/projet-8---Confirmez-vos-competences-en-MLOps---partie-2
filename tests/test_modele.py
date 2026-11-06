@@ -3,6 +3,7 @@
 import json
 import shutil
 
+import pandas as pd
 import pytest
 
 from api.modele import DOSSIER_MODELE, ModeleScoring
@@ -53,3 +54,11 @@ def test_refuse_un_modele_altere(tmp_path):
     (dossier / "metadata.json").write_text(json.dumps(metadata))
     with pytest.raises(RuntimeError, match="empreinte"):
         ModeleScoring(dossier)
+
+
+def test_predire_identique_a_scikit_learn(modele, clients_exemple):
+    """L'optimisation (numpy + booster) donne exactement les probabilités de predict_proba sur un DataFrame."""
+    for client in clients_exemple:
+        X = pd.DataFrame([client], columns=modele.variables).astype(float)  # l'ancienne méthode
+        attendu = modele.modele.predict_proba(X)[0, 1]
+        assert modele.predire(client) == pytest.approx(attendu, abs=1e-12)
