@@ -25,8 +25,14 @@ jobs:
           enable-cache: true
       - name: Installer Python et les dépendances
         run: uv sync --locked
+      - name: Qualité du code
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run pylint api dashboard scripts --fail-under=9.5
       - name: Lancer les tests
-        run: uv run pytest -v
+        run: uv run pytest -v --cov=api --cov=dashboard --cov-report=term-missing
+
 
   image:
     name: image

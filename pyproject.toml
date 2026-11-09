@@ -23,7 +23,10 @@ dev = [
     "httpx2>=2.16.0",
     "ipykernel>=7.4.0",
     "matplotlib>=3.11.2",
+    "pylint>=4.1.3",
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.4",
     "seaborn>=0.13.2",
     "streamlit>=1.66.1",
 ]
@@ -31,3 +34,24 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.format]
+exclude = ["*.ipynb"]   # le notebook garde sa mise en forme : c'est un livrable, relu tel quel
+
+[tool.pylint.format]
+max-line-length = 110
+
+[tool.pylint.basic]
+good-names-rgxs = ["^X(_[a-z]+)?$"]   # X, X_train… : la convention du machine learning pour une matrice
+
+[tool.pylint.typecheck]
+ignored-modules = ["onnxruntime", "onnxmltools"]   # installés à la demande (uv run --with) par comparer_onnx.py
+
+[tool.pylint."messages control"]
+disable = ["too-few-public-methods"]   # les classes Pydantic et SQLAlchemy décrivent des données, sans méthodes
+
+[tool.coverage.run]
+omit = ["dashboard/app.py"]   # l'affichage Streamlit ; ses calculs sont dans indicateurs.py, testé

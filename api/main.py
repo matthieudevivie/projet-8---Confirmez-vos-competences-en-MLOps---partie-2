@@ -3,7 +3,7 @@
 import os
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -19,13 +19,15 @@ from api.schemas import Client, Prediction
 
 RAPPORT_DRIFT = Path(__file__).resolve().parent.parent / "rapports" / "rapport_drift.html"
 
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    app.state.modele = ModeleScoring()  # chargé UNE fois, au démarrage
-    app.state.variables_surveillees = app.state.modele.variables_surveillees()
-    app.state.journal = Journal(os.environ.get("DATABASE_URL"))
+async def lifespan(application: FastAPI):
+    """Au démarrage : charge le modèle et ouvre le journal ; à l'arrêt : ferme le journal."""
+    application.state.modele = ModeleScoring()  # chargé UNE fois, au démarrage
+    application.state.variables_surveillees = application.state.modele.variables_surveillees()
+    application.state.journal = Journal(os.environ.get("DATABASE_URL"))
     yield
-    app.state.journal.fermer()
+    application.state.journal.fermer()
 
 
 app = FastAPI(
@@ -41,7 +43,7 @@ async def journaliser_les_predictions(request: Request, call_next):
     """Mesure et enregistre chaque appel à /predict, y compris les refus (422) et les pannes (500)."""
     if request.url.path != "/predict":
         return await call_next(request)
-    date_appel = datetime.now(timezone.utc)
+    date_appel = datetime.now(UTC)
     debut = time.perf_counter()
     details = {}
     try:
@@ -54,7 +56,7 @@ async def journaliser_les_predictions(request: Request, call_next):
         raise
     finally:
         id_client = request.query_params.get("id_client", "")
-        await run_in_threadpool(          # écriture en base hors de la boucle principale : l'API reste réactive
+        await run_in_threadpool(  # écriture en base hors de la boucle principale : l'API reste réactive
             request.app.state.journal.enregistrer,
             date_appel=date_appel,
             id_client=int(id_client) if id_client.isdigit() else None,
@@ -101,8 +103,13 @@ def rapport_drift():
     return FileResponse(RAPPORT_DRIFT, media_type="text/html")
 
 
+# id_client n'est pas lu ici mais par le middleware : le déclarer l'affiche dans la documentation /docs
 @app.post("/predict", response_model=Prediction)
-def predict(client: Client, request: Request, id_client: int | None = None):
+def predict(
+    client: Client,
+    request: Request,
+    id_client: int | None = None,  # pylint: disable=unused-argument
+):
     """Score d'un client à partir de ses variables. `id_client` (facultatif) sert seulement au suivi."""
     modele = request.app.state.modele
     entrees = client.model_dump()

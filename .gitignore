@@ -30,5 +30,6 @@ mlartifacts/
 cours/*
 instructions/*
 
-# Profiling
+# Profiling et couverture de tests
 *.out
+.coverage

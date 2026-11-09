@@ -15,7 +15,9 @@ from api.main import app
 def api_journalisee(tmp_path, monkeypatch):
     """L'API branchée sur une base SQLite jetable, neuve pour chaque test."""
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'journal.db'}")
-    with TestClient(app, raise_server_exceptions=False) as client_http:  # une panne doit renvoyer 500, pas planter le test
+    with TestClient(
+        app, raise_server_exceptions=False
+    ) as client_http:  # une panne doit renvoyer 500, pas planter le test
         yield client_http
 
 
@@ -30,7 +32,7 @@ def test_une_prediction_est_enregistree(api_journalisee, clients_exemple):
     assert appel.statut_http == 200
     assert appel.id_client == 100001
     assert (appel.probabilite_defaut, appel.decision, appel.version_modele) == (0.1983, "refuse", 10)
-    assert list(appel.entrees) == app.state.variables_surveillees   # les 12 variables surveillées, pas les 800
+    assert list(appel.entrees) == app.state.variables_surveillees  # les 12 variables surveillées, pas les 800
     assert appel.entrees["EXT_SOURCE_3"] == clients_exemple[2]["EXT_SOURCE_3"]
     assert 0 < appel.duree_inference_ms < appel.duree_ms
 
@@ -40,8 +42,8 @@ def test_un_refus_est_enregistre_avec_sa_raison(api_journalisee, clients_exemple
     [appel] = appels_enregistres()
     assert appel.statut_http == 422
     assert appel.erreur[0]["type"] == "extra_forbidden"
-    assert appel.erreur[0]["loc"] == ["body", "AGE"]   # la raison suffit à comprendre le refus
-    assert "input" not in appel.erreur[0]              # sans recopier les valeurs envoyées
+    assert appel.erreur[0]["loc"] == ["body", "AGE"]  # la raison suffit à comprendre le refus
+    assert "input" not in appel.erreur[0]  # sans recopier les valeurs envoyées
     assert appel.entrees is None
 
 
@@ -63,7 +65,7 @@ def test_les_autres_routes_ne_sont_pas_journalisees(api_journalisee):
 
 
 def test_sans_base_seul_le_log_json_est_ecrit(caplog):
-    journal = Journal(None)                      # comme sur Render : pas de DATABASE_URL
+    journal = Journal(None)  # comme sur Render : pas de DATABASE_URL
     assert not journal.actif
     journal.enregistrer(statut_http=200, duree_ms=12.5, entrees={"EXT_SOURCE_3": 0.6})
     ligne = json.loads(caplog.records[-1].getMessage())

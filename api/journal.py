@@ -1,4 +1,6 @@
-"""Journal des appels de production : une ligne JSON dans les logs, et une ligne en base si elle est configurée.
+"""Journal des appels de production.
+
+Une ligne JSON dans les logs, et une ligne en base si elle est configurée.
 
 La base est désignée par la variable d'environnement DATABASE_URL (en local : un fichier SQLite). Sans elle
 (sur Render, dont le disque est effacé à chaque redémarrage), seuls les logs JSON sont écrits.
@@ -14,13 +16,13 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 logger = logging.getLogger("scoring.appels")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
-    sortie = logging.StreamHandler()                 # vers la sortie standard, que Render affiche dans ses logs
+    sortie = logging.StreamHandler()  # vers la sortie standard, que Render affiche dans ses logs
     sortie.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(sortie)
 
 
 class Base(DeclarativeBase):
-    pass
+    """Base commune des tables SQLAlchemy."""
 
 
 class Appel(Base):
@@ -31,28 +33,32 @@ class Appel(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     date_appel: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     id_client: Mapped[int | None]
-    statut_http: Mapped[int]                         # 200 réussi, 422 refusé, 500 panne
-    duree_ms: Mapped[float]                          # latence totale vue par l'API
-    duree_inference_ms: Mapped[float | None]         # le seul calcul du modèle
+    statut_http: Mapped[int]  # 200 réussi, 422 refusé, 500 panne
+    duree_ms: Mapped[float]  # latence totale vue par l'API
+    duree_inference_ms: Mapped[float | None]  # le seul calcul du modèle
     probabilite_defaut: Mapped[float | None]
     decision: Mapped[str | None] = mapped_column(String(10))
     seuil: Mapped[float | None]
     version_modele: Mapped[int | None]
-    entrees: Mapped[dict | None] = mapped_column(JSON)   # les seules variables surveillées, pas les 800
-    erreur: Mapped[list | None] = mapped_column(JSON)    # le détail du refus ou de la panne
+    entrees: Mapped[dict | None] = mapped_column(JSON)  # les seules variables surveillées, pas les 800
+    erreur: Mapped[list | None] = mapped_column(JSON)  # le détail du refus ou de la panne
 
 
 class Journal:
+    """Écrit chaque appel dans les logs, et en base si DATABASE_URL est fournie."""
+
     def __init__(self, url: str | None = None):
         self.moteur = create_engine(url) if url else None
         if self.moteur is not None:
-            Base.metadata.create_all(self.moteur)    # crée la table au premier démarrage, sinon ne fait rien
+            Base.metadata.create_all(self.moteur)  # crée la table au premier démarrage, sinon ne fait rien
 
     @property
     def actif(self) -> bool:
+        """Vrai si une base est configurée."""
         return self.moteur is not None
 
     def enregistrer(self, **appel):
+        """Enregistre un appel : une ligne JSON dans les logs, et une ligne en base si elle existe."""
         logger.info(json.dumps(appel, default=str))  # default=str : la date devient du texte
         if self.moteur is not None:
             with Session(self.moteur) as session:
@@ -60,5 +66,6 @@ class Journal:
                 session.commit()
 
     def fermer(self):
+        """Libère les connexions à la base, à l'arrêt de l'API."""
         if self.moteur is not None:
             self.moteur.dispose()

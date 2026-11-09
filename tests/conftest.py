@@ -15,8 +15,10 @@ def clients_exemple():
     """Les trois clients enregistrés par MLflow avec le modèle (NaN → None, comme en JSON)."""
     exemple = json.loads((DOSSIER_MODELE / "input_example.json").read_text())
     return [
-        {nom: None if isinstance(valeur, float) and math.isnan(valeur) else valeur
-         for nom, valeur in zip(exemple["columns"], ligne)}
+        {
+            nom: None if isinstance(valeur, float) and math.isnan(valeur) else valeur
+            for nom, valeur in zip(exemple["columns"], ligne)
+        }
         for ligne in exemple["data"]
     ]
 
