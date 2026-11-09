@@ -21,12 +21,13 @@ RAPPORT_DRIFT = Path(__file__).resolve().parent.parent / "rapports" / "rapport_d
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    app.state.modele = ModeleScoring()  # chargé UNE fois, au démarrage
-    app.state.variables_surveillees = app.state.modele.variables_surveillees()
-    app.state.journal = Journal(os.environ.get("DATABASE_URL"))
+async def lifespan(application: FastAPI):
+    """Au démarrage : charge le modèle et ouvre le journal ; à l'arrêt : ferme le journal."""
+    application.state.modele = ModeleScoring()  # chargé UNE fois, au démarrage
+    application.state.variables_surveillees = application.state.modele.variables_surveillees()
+    application.state.journal = Journal(os.environ.get("DATABASE_URL"))
     yield
-    app.state.journal.fermer()
+    application.state.journal.fermer()
 
 
 app = FastAPI(
@@ -102,8 +103,13 @@ def rapport_drift():
     return FileResponse(RAPPORT_DRIFT, media_type="text/html")
 
 
+# id_client n'est pas lu ici mais par le middleware : le déclarer l'affiche dans la documentation /docs
 @app.post("/predict", response_model=Prediction)
-def predict(client: Client, request: Request, id_client: int | None = None):
+def predict(
+    client: Client,
+    request: Request,
+    id_client: int | None = None,  # pylint: disable=unused-argument
+):
     """Score d'un client à partir de ses variables. `id_client` (facultatif) sert seulement au suivi."""
     modele = request.app.state.modele
     entrees = client.model_dump()

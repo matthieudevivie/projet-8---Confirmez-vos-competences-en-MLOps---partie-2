@@ -1,6 +1,7 @@
 """Tableau de bord de monitoring de l'API de scoring.
 
-Lit les appels journalisés (logs/appels.db) et les compare aux données d'entraînement (data/reference.parquet).
+Lit les appels journalisés (logs/appels.db) et les compare aux données d'entraînement
+(data/reference.parquet).
 Usage : uv run streamlit run dashboard/app.py
 """
 
@@ -15,9 +16,11 @@ import streamlit as st
 RACINE = Path(__file__).resolve().parent.parent
 # streamlit lance ce fichier comme un script : on rend api/ et dashboard/ importables
 sys.path.append(str(RACINE))
-
+# pylint: disable=wrong-import-position
 from api.modele import ModeleScoring
 from dashboard.indicateurs import derive_des_scores, entrees_en_colonnes, indicateurs_cles, tableau_derive
+
+# pylint: enable=wrong-import-position
 
 BASE = RACINE / "logs" / "appels.db"
 REFERENCE = RACINE / "data" / "reference.parquet"
@@ -27,6 +30,7 @@ COULEURS = {"stable": "#d4edda", "à surveiller": "#fff3cd", "alerte": "#f8d7da"
 
 @st.cache_resource
 def charger_modele():
+    """Le modèle, chargé une seule fois pour toutes les sessions Streamlit."""
     return ModeleScoring()  # le même modèle que l'API, empreinte vérifiée
 
 
@@ -34,20 +38,22 @@ def charger_modele():
 def charger_reference(_modele):
     """Variables surveillées et scores des données d'entraînement : calculés une fois, gardés en cache."""
     variables = _modele.variables_surveillees()
-    reference = pd.read_parquet(REFERENCE, columns=variables).astype(float)
+    variables_ref = pd.read_parquet(REFERENCE, columns=variables).astype(float)
     X = pd.read_parquet(REFERENCE, columns=_modele.variables).sample(50_000, random_state=42)
     scores = pd.Series(_modele.modele.predict_proba(X)[:, 1])  # même échantillon que le notebook
-    return reference, scores
+    return variables_ref, scores
 
 
 @st.cache_data(ttl=60)  # relu au plus toutes les minutes : les nouveaux appels apparaissent sans redémarrer
 def charger_appels():
+    """Les appels journalisés, du plus ancien au plus récent."""
     return pd.read_sql_table("appels", f"sqlite:///{BASE}").sort_values("date_appel")
 
 
-def distribution(scores, source, tranches):
-    parts = np.histogram(scores.clip(upper=tranches[-1]), bins=tranches)[0] / len(scores) * 100
-    return pd.DataFrame({"score": tranches[:-1], "part_pct": parts, "source": source})
+def distribution(scores, source, bornes):
+    """Part des scores (en %) dans chaque tranche, pour l'histogramme comparé."""
+    parts = np.histogram(scores.clip(upper=bornes[-1]), bins=bornes)[0] / len(scores) * 100
+    return pd.DataFrame({"score": bornes[:-1], "part_pct": parts, "source": source})
 
 
 st.set_page_config(page_title="Monitoring du scoring crédit", layout="wide")
@@ -55,7 +61,8 @@ st.title("Monitoring de l'API de scoring crédit")
 
 if not BASE.exists():
     st.error(
-        f"Aucune base d'appels trouvée ({BASE.relative_to(RACINE)}) : lancez l'API avec DATABASE_URL (voir le README)."
+        f"Aucune base d'appels trouvée ({BASE.relative_to(RACINE)}) : "
+        "lancez l'API avec DATABASE_URL (voir le README)."
     )
     st.stop()
 
@@ -91,8 +98,10 @@ colonnes[5].metric("Inférence moyenne", f"{kpi['inference_moyenne_ms']:.1f} ms"
 st.header("Distribution des scores")
 scores_production = appels.loc[appels["statut_http"] == 200, "probabilite_defaut"]
 derive = derive_des_scores(scores_reference, scores_production, modele.seuil)
-message = f"PSI des scores : {derive['psi']:.3f} · taux de refus : {derive['ecart_refus_pts']:+.1f} points par rapport à la référence"
-(st.error if derive["alerte"] else st.success)(("Alerte — " if derive["alerte"] else "Stable — ") + message)
+message = (
+    f"PSI des scores : {derive['psi']:.3f} · "
+    f"taux de refus : {derive['ecart_refus_pts']:+.1f} points par rapport à la référence"
+)
 
 tranches = np.linspace(0, 0.5, 51)
 donnees = pd.concat(

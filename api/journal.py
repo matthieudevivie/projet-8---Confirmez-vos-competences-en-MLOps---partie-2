@@ -1,4 +1,6 @@
-"""Journal des appels de production : une ligne JSON dans les logs, et une ligne en base si elle est configurée.
+"""Journal des appels de production.
+
+Une ligne JSON dans les logs, et une ligne en base si elle est configurée.
 
 La base est désignée par la variable d'environnement DATABASE_URL (en local : un fichier SQLite). Sans elle
 (sur Render, dont le disque est effacé à chaque redémarrage), seuls les logs JSON sont écrits.
@@ -20,7 +22,7 @@ if not logger.handlers:
 
 
 class Base(DeclarativeBase):
-    pass
+    """Base commune des tables SQLAlchemy."""
 
 
 class Appel(Base):
@@ -43,6 +45,8 @@ class Appel(Base):
 
 
 class Journal:
+    """Écrit chaque appel dans les logs, et en base si DATABASE_URL est fournie."""
+
     def __init__(self, url: str | None = None):
         self.moteur = create_engine(url) if url else None
         if self.moteur is not None:
@@ -50,9 +54,11 @@ class Journal:
 
     @property
     def actif(self) -> bool:
+        """Vrai si une base est configurée."""
         return self.moteur is not None
 
     def enregistrer(self, **appel):
+        """Enregistre un appel : une ligne JSON dans les logs, et une ligne en base si elle existe."""
         logger.info(json.dumps(appel, default=str))  # default=str : la date devient du texte
         if self.moteur is not None:
             with Session(self.moteur) as session:
@@ -60,5 +66,6 @@ class Journal:
                 session.commit()
 
     def fermer(self):
+        """Libère les connexions à la base, à l'arrêt de l'API."""
         if self.moteur is not None:
             self.moteur.dispose()

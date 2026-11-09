@@ -25,7 +25,9 @@ REGLES_METIER = {
     "CNT_FAM_MEMBERS": Field(ge=1, le=25, description="Taille du foyer, client compris"),
     "DAYS_EMPLOYED": Field(
         le=0,
-        description="Ancienneté dans l'emploi en jours (négatif) ; la valeur aberrante 365243 doit arriver à null",
+        description=(
+            "Ancienneté dans l'emploi en jours (négatif) ; la valeur aberrante 365243 doit arriver à null"
+        ),
     ),
     "DAYS_REGISTRATION": Field(le=0, description="Jours depuis le changement d'enregistrement (négatif)"),
     "DAYS_ID_PUBLISH": Field(le=0, description="Jours depuis le changement de pièce d'identité (négatif)"),
@@ -67,6 +69,8 @@ Client = construire_schema_client()
 
 
 class Prediction(BaseModel):
+    """La réponse de /predict."""
+
     probabilite_defaut: float
     decision: Literal["accorde", "refuse"]
     seuil: float

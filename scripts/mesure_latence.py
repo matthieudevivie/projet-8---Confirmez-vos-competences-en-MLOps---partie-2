@@ -10,8 +10,6 @@ import pandas as pd
 from api.modele import ModeleScoring
 
 RACINE = Path(__file__).resolve().parent.parent
-modele = ModeleScoring()  # chargé une fois, comme dans l'API
-client = json.loads((RACINE / "data" / "client_exemple.json").read_text())
 
 
 def chronometrer(fonction, repetitions=300):
@@ -25,12 +23,20 @@ def chronometrer(fonction, repetitions=300):
     return f"médiane {np.median(temps):6.3f} ms | p95 {np.percentile(temps, 95):6.3f} ms"
 
 
-X = pd.DataFrame([client], columns=modele.variables).astype(float)
+def main():
+    """Chronomètre predire() actuel, puis les deux étapes de l'ancienne méthode (pandas)."""
+    modele = ModeleScoring()  # chargé une fois, comme dans l'API
+    client = json.loads((RACINE / "data" / "client_exemple.json").read_text())
+    X = pd.DataFrame([client], columns=modele.variables).astype(float)
 
-print("predire() actuel          ", chronometrer(lambda: modele.predire(client)))
-print("Ancienne méthode (pandas) :")
-print(
-    "  1. dict → DataFrame     ",
-    chronometrer(lambda: pd.DataFrame([client], columns=modele.variables).astype(float)),
-)
-print("  2. predict_proba(df)    ", chronometrer(lambda: modele.modele.predict_proba(X)))
+    print("predire() actuel          ", chronometrer(lambda: modele.predire(client)))
+    print("Ancienne méthode (pandas) :")
+    print(
+        "  1. dict → DataFrame     ",
+        chronometrer(lambda: pd.DataFrame([client], columns=modele.variables).astype(float)),
+    )
+    print("  2. predict_proba(df)    ", chronometrer(lambda: modele.modele.predict_proba(X)))
+
+
+if __name__ == "__main__":
+    main()

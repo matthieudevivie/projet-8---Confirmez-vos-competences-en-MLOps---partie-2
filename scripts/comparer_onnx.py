@@ -5,7 +5,6 @@ Les deux bibliothèques ne servent qu'à ce test : elles ne sont pas dans pyproj
 """
 
 import json
-import time
 from pathlib import Path
 
 import numpy as np
@@ -15,6 +14,7 @@ from onnxmltools import convert_lightgbm
 from onnxmltools.convert.common.data_types import FloatTensorType
 
 from api.modele import ModeleScoring
+from scripts.mesure_latence import chronometrer
 
 RACINE = Path(__file__).resolve().parent.parent
 modele = ModeleScoring()
@@ -32,11 +32,11 @@ taille_pkl = (RACINE / "model" / "model.pkl").stat().st_size
 print(f"Taille du modèle : pickle {taille_pkl / 1e6:.1f} Mo | ONNX {len(octets) / 1e6:.1f} Mo")
 
 
-def predire_onnx(client: dict) -> float:
+def predire_onnx(entrees: dict) -> float:
     """Même chemin que ModeleScoring.predire, mais avec ONNX Runtime (qui attend du float32)."""
-    X = np.array([[client.get(nom) for nom in modele.variables]], dtype=np.float32)
+    ligne = np.array([[entrees.get(nom) for nom in modele.variables]], dtype=np.float32)
     # sortie [1] = probabilités ; colonne 1 = P(défaut)
-    return float(session.run(None, {"entree": X})[1][0, 1])
+    return float(session.run(None, {"entree": ligne})[1][0, 1])
 
 
 # 2. Précision : 5 000 clients de référence, toutes les prédictions d'un coup
@@ -49,17 +49,5 @@ print(f"Écart max de probabilité : {np.abs(proba_onnx - proba_lgbm).max():.2e}
 print(f"Décisions différentes : {decisions_differentes} / {len(X)}")
 
 
-# 3. Vitesse : un client à la fois, comme dans l'API
-def chronometrer(fonction, repetitions=1000):
-    """Médiane et 95e centile, en millisecondes."""
-    fonction()
-    temps = []
-    for _ in range(repetitions):
-        debut = time.perf_counter()
-        fonction()
-        temps.append((time.perf_counter() - debut) * 1000)
-    return f"médiane {np.median(temps):6.3f} ms | p95 {np.percentile(temps, 95):6.3f} ms"
-
-
-print("predire() déployé (LightGBM)", chronometrer(lambda: modele.predire(client)))
-print("predire_onnx()              ", chronometrer(lambda: predire_onnx(client)))
+print("predire() déployé (LightGBM)", chronometrer(lambda: modele.predire(client), repetitions=1000))
+print("predire_onnx()              ", chronometrer(lambda: predire_onnx(client), repetitions=1000))

@@ -29,6 +29,7 @@ def requetes(production):
 
 
 def main():
+    """Envoie les clients à l'API, puis affiche le décompte des statuts HTTP."""
     parser = argparse.ArgumentParser(description="Envoie des clients de production à l'API locale.")
     parser.add_argument(
         "--clients", type=int, default=5000, help="nombre de clients, tirés au hasard (défaut : 5000)"
@@ -62,7 +63,8 @@ def main():
                 print(f"{numero} clients envoyés en {time.perf_counter() - debut:.0f} s : {dict(statuts)}")
 
     print(
-        f"Terminé : {sum(statuts.values())} appels en {time.perf_counter() - debut:.0f} s, statuts {dict(statuts)}"
+        f"Terminé : {sum(statuts.values())} appels en {time.perf_counter() - debut:.0f} s, "
+        f"statuts {dict(statuts)}"
     )
 
 

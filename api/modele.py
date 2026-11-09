@@ -48,4 +48,5 @@ class ModeleScoring:
         return float(self.modele.booster_.predict(X)[0])  # le booster renvoie directement P(défaut)
 
     def decider(self, probabilite: float) -> str:
+        """Décision d'octroi : refusé si la probabilité de défaut atteint le seuil."""
         return "refuse" if probabilite >= self.seuil else "accorde"

@@ -20,7 +20,7 @@ from sklearn.model_selection import train_test_split
 
 RACINE = Path(__file__).resolve().parent.parent
 sys.path.append(str(RACINE))
-from api.modele import DOSSIER_MODELE, ModeleScoring
+from api.modele import DOSSIER_MODELE, ModeleScoring  # pylint: disable=wrong-import-position
 
 DOSSIER_BRUT = RACINE.parent / "projet6" / "data"  # les CSV Kaggle, déjà téléchargés au projet 6
 DOSSIER_SORTIE = RACINE / "data"
@@ -30,6 +30,7 @@ DOSSIER_SORTIE = RACINE / "data"
 
 
 def one_hot_encoder(df, nan_as_category=True):
+    """Encode les colonnes texte en 0/1 ; renvoie le tableau et la liste des nouvelles colonnes."""
     original_columns = list(df.columns)
     categorical_columns = df.select_dtypes(exclude=["number", "bool"]).columns.tolist()
     df = pd.get_dummies(df, columns=categorical_columns, dummy_na=nan_as_category)
@@ -38,7 +39,8 @@ def one_hot_encoder(df, nan_as_category=True):
     return df, new_columns
 
 
-def bureau_and_balance(nan_as_category=True):
+def bureau_and_balance(nan_as_category=True):  # pylint: disable=too-many-locals
+    """Historique des crédits dans les autres organismes, agrégé par client."""
     bureau = pd.read_csv(DOSSIER_BRUT / "bureau.csv")
     bb = pd.read_csv(DOSSIER_BRUT / "bureau_balance.csv")
     bb, bb_cat = one_hot_encoder(bb, nan_as_category)
@@ -89,6 +91,7 @@ def bureau_and_balance(nan_as_category=True):
 
 
 def pos_cash():
+    """Soldes mensuels des crédits à la consommation et en point de vente, agrégés par client."""
     pos = pd.read_csv(DOSSIER_BRUT / "POS_CASH_balance.csv")
     pos, cat_cols = one_hot_encoder(pos, nan_as_category=True)
     aggregations = {
@@ -105,6 +108,7 @@ def pos_cash():
 
 
 def installments_payments():
+    """Historique des remboursements (retards, écarts de montant), agrégé par client."""
     ins = pd.read_csv(DOSSIER_BRUT / "installments_payments.csv")
     ins, cat_cols = one_hot_encoder(ins, nan_as_category=True)
     ins["PAYMENT_PERC"] = ins["AMT_PAYMENT"] / ins["AMT_INSTALMENT"]
@@ -130,6 +134,7 @@ def installments_payments():
 
 
 def credit_card_balance():
+    """Soldes mensuels des cartes de crédit, agrégés par client."""
     cc = pd.read_csv(DOSSIER_BRUT / "credit_card_balance.csv")
     cc, _ = one_hot_encoder(cc, nan_as_category=True)
     cc = cc.drop(columns=["SK_ID_PREV"])
@@ -140,6 +145,7 @@ def credit_card_balance():
 
 
 def previous_applications():
+    """Demandes de crédit précédentes chez Home Credit, agrégées par client."""
     prev = pd.read_csv(DOSSIER_BRUT / "previous_application.csv")
     prev, cat_cols = one_hot_encoder(prev, nan_as_category=True)
     for col in [
@@ -205,6 +211,7 @@ def preparer_application():
 
 
 def main():
+    """Reconstruit les 800 variables du projet 6 et écrit les jeux de référence et de production."""
     modele = ModeleScoring()
 
     print("1/4 Table principale…")

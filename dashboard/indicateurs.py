@@ -41,7 +41,7 @@ def niveau(psi, ecart_manquants_pts=0.0):
 
 
 def entrees_en_colonnes(appels):
-    """Les variables journalisées (colonne JSON « entrees ») des prédictions réussies, une colonne par variable."""
+    """Variables journalisées (colonne JSON « entrees ») des prédictions réussies, en colonnes."""
     reussis = appels[appels["statut_http"] == 200]
     return pd.DataFrame(reussis["entrees"].tolist(), index=reussis.index).astype(float)  # None → NaN
 
