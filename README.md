@@ -81,7 +81,7 @@ uv run pytest
 Le pipeline [`.github/workflows/ci.yml`](.github/workflows/ci.yml) tourne sur chaque pull request
 et sur chaque push dans `main` :
 
-1. **tests** : la suite pytest ;
+1. **tests** : qualité du code (ruff, pylint ≥ 9,5), puis la suite pytest avec la couverture ;
 2. **image** : construction de l'image Docker, démarrage du conteneur, vérification de `/health` et de `/drift` ;
 3. sur `main` seulement : publication de l'image sur `ghcr.io`, puis **deploy** sur Render, et
    attente que `/health` renvoie le commit qui vient d'être déployé.
@@ -186,6 +186,91 @@ fenêtre analysée (les 500 derniers appels par défaut, la taille retenue dans 
 
 Les calculs sont dans [`dashboard/indicateurs.py`](dashboard/indicateurs.py), testés par
 [`tests/test_indicateurs.py`](tests/test_indicateurs.py) ; l'affichage dans [`dashboard/app.py`](dashboard/app.py).
+
+## Optimisation des performances
+
+Démarche : **mesurer → localiser → optimiser → vérifier → déployer**. Chaque hypothèse part des données
+de monitoring, est confirmée par un profiler, et chaque gain est mesuré à nouveau par le monitoring.
+
+### Le goulot d'étranglement
+
+Le monitoring de l'API montrait que l'inférence représentait **86 %** de la durée d'un appel. Le profiling
+(`cProfile` + `snakeviz`) a précisé où partait ce temps dans `predire()` :
+
+| Étape de `predire()` | Part du temps |
+|---|---|
+| Construction d'un `DataFrame` pandas de 800 colonnes pour un seul client | **79 %** |
+| `predict_proba` (vérifications scikit-learn, conversion des données) | 20 % |
+| Calcul des 400 arbres par LightGBM (C++) | ≈ 1 % |
+
+Le modèle n'était donc pas le goulot : c'était la préparation des données.
+
+| Avant | Après |
+|---|---|
+| ![Profil avant](captures/profil_avant.png) | ![Profil après](captures/profil_apres.png) |
+
+### L'optimisation retenue : numpy au lieu de pandas
+
+`predire()` construit directement un tableau numpy, dans l'ordre des variables du modèle, et appelle le
+booster LightGBM sans passer par la couche scikit-learn. Aucune nouvelle dépendance.
+
+```bash
+uv run python -m scripts.mesure_latence   # banc d'essai : un client, 300 répétitions
+```
+
+| Mesure (médiane) | Avant | Après | Gain |
+|---|---|---|---|
+| `predire()` au banc d'essai | 4,4 ms | 0,073 ms | ÷ 60 |
+| Temps d'inférence (monitoring, p95) | 4,34 ms (4,98) | 0,118 ms (0,144) | ÷ 37 |
+| Durée totale de l'appel (monitoring, p95) | 5,05 ms (5,88) | 0,681 ms (0,754) | ÷ 7,4 |
+| Part de l'inférence dans l'appel | 86 % | 17 % | |
+
+*Monitoring : 4 912 prédictions avant, 980 après, API locale, base SQLite séparée pour chaque série.*
+
+**Non-régression** : le test `test_predire_identique_a_scikit_learn` vérifie que les probabilités sont
+identiques à l'ancienne méthode à 10⁻¹² près ; les 45 tests passent, donc aucune décision ne change.
+
+Après l'optimisation, **le goulot s'est déplacé** : l'essentiel de l'appel est désormais la validation
+Pydantic des 800 champs. À 0,7 ms par appel, l'alléger n'apporterait rien de visible face à la latence réseau.
+
+### Stratégies testées et écartées
+
+| Stratégie | Résultat | Décision |
+|---|---|---|
+| **ONNX Runtime** ([`scripts/comparer_onnx.py`](scripts/comparer_onnx.py)) | 0,043 ms contre 0,075 ms par prédiction, mais probabilités non strictement identiques (float32) : écart max 0,0028 sur 50 000 clients, 0 décision modifiée | **Écartée** : gain de 0,03 ms (4 % de l'appel) contre une dépendance en plus et la perte de l'identité stricte avec le modèle validé |
+| **Quantification** | Conçue pour les poids des réseaux de neurones ; un modèle d'arbres n'a pas de poids à quantifier | **Inadaptée** |
+| **Moins d'arbres** (≈ 342 au lieu de 400) | Accélérerait l'inférence, mais change le modèle | **Hors périmètre** : c'est un réentraînement à revalider |
+
+### Hardware
+
+| Mesure | Résultat |
+|---|---|
+| Réveil de l'instance Render gratuite (*cold start*, après 15 min sans appel) | 0.121 s |
+| Appel suivant | 0.117 s |
+
+L'inférence ne coûte plus que 0,1 ms : un processeur plus puissant n'apporterait presque rien. Le temps perçu
+vient du réseau et du réveil de l'instance. Pistes : instance toujours active (supprime le cold start),
+plusieurs workers uvicorn si la charge augmente. Un GPU est inutile pour un modèle d'arbres.
+
+### Configuration finale
+
+LightGBM natif appelé avec numpy, sur l'instance CPU gratuite de Render, sans dépendance d'optimisation
+supplémentaire. Limite assumée : le cold start, qui disparaîtrait avec une instance payante toujours active.
+
+### Qualité du code
+
+Vérifiée à chaque pull request par la CI : `ruff check` (analyse statique), `ruff format --check` (style
+black), `pylint --fail-under=9.5`, et la couverture de test.
+
+| Indicateur | Avant | Après |
+|---|---|---|
+| Note pylint (`api`, `dashboard`, `scripts`) | 7,90/10 | 10,00/10 |
+| Remarques ruff | 7 | 0 |
+| Fichiers non formatés | 15 | 0 |
+| Couverture de test | API 100 % | 99 % au total, API 100 % |
+| Complexité moyenne (radon) | A | A |
+
+Les rares exceptions aux règles sont écrites et justifiées dans [`pyproject.toml`](pyproject.toml).
 
 
 ## Avancement
