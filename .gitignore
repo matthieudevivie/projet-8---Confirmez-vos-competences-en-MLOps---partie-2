@@ -29,6 +29,7 @@ mlartifacts/
 # OpenClassrooms related files
 cours/*
 instructions/*
+soutenance/*
 
 # Profiling et couverture de tests
 *.out

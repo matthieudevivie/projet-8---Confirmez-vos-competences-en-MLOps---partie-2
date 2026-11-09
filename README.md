@@ -245,8 +245,8 @@ Pydantic des 800 champs. À 0,7 ms par appel, l'alléger n'apporterait rien de v
 
 | Mesure | Résultat |
 |---|---|
-| Réveil de l'instance Render gratuite (*cold start*, après 15 min sans appel) | 0.121 s |
-| Appel suivant | 0.117 s |
+| Réveil de l'instance Render gratuite (*cold start*, après 15 min sans appel) | 52.365 s |
+| Appel suivant | 0.137 s |
 
 L'inférence ne coûte plus que 0,1 ms : un processeur plus puissant n'apporterait presque rien. Le temps perçu
 vient du réseau et du réveil de l'instance. Pistes : instance toujours active (supprime le cold start),
@@ -278,4 +278,4 @@ Les rares exceptions aux règles sont écrites et justifiées dans [`pyproject.t
 - [x] Étape 1 — Dépôt Git et structure du projet
 - [x] Étape 2 — API, tests, Docker et pipeline CI/CD
 - [x] Étape 3 — Stockage des données de production et analyse du drift
-- [ ] Étape 4 — Analyse et optimisation des performances
+- [x] Étape 4 — Analyse et optimisation des performances
