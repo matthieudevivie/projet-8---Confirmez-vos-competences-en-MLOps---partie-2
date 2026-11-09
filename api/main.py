@@ -3,7 +3,7 @@
 import os
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -18,6 +18,7 @@ from api.modele import ModeleScoring
 from api.schemas import Client, Prediction
 
 RAPPORT_DRIFT = Path(__file__).resolve().parent.parent / "rapports" / "rapport_drift.html"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,7 +42,7 @@ async def journaliser_les_predictions(request: Request, call_next):
     """Mesure et enregistre chaque appel à /predict, y compris les refus (422) et les pannes (500)."""
     if request.url.path != "/predict":
         return await call_next(request)
-    date_appel = datetime.now(timezone.utc)
+    date_appel = datetime.now(UTC)
     debut = time.perf_counter()
     details = {}
     try:
@@ -54,7 +55,7 @@ async def journaliser_les_predictions(request: Request, call_next):
         raise
     finally:
         id_client = request.query_params.get("id_client", "")
-        await run_in_threadpool(          # écriture en base hors de la boucle principale : l'API reste réactive
+        await run_in_threadpool(  # écriture en base hors de la boucle principale : l'API reste réactive
             request.app.state.journal.enregistrer,
             date_appel=date_appel,
             id_client=int(id_client) if id_client.isdigit() else None,

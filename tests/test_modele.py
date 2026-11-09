@@ -19,8 +19,8 @@ def test_le_modele_attend_800_variables(modele):
 def test_variables_surveillees(modele):
     variables = modele.variables_surveillees()
     assert len(variables) == 12
-    assert variables[0] == "EXT_SOURCE_3"                                   # la plus importante du modèle
-    assert [modele.types[nom] for nom in variables[-2:]] == ["boolean", "boolean"]   # pour le chi²
+    assert variables[0] == "EXT_SOURCE_3"  # la plus importante du modèle
+    assert [modele.types[nom] for nom in variables[-2:]] == ["boolean", "boolean"]  # pour le chi²
 
 
 def test_le_seuil_vient_des_metadonnees(modele):
@@ -37,11 +37,14 @@ def test_valeurs_manquantes_acceptees(modele, clients_exemple):
     assert 0 <= modele.predire(client) <= 1
 
 
-@pytest.mark.parametrize("probabilite, decision", [
-    (0.0899, "accorde"),
-    (0.09, "refuse"),  # au seuil exactement : on refuse
-    (0.5, "refuse"),
-])
+@pytest.mark.parametrize(
+    "probabilite, decision",
+    [
+        (0.0899, "accorde"),
+        (0.09, "refuse"),  # au seuil exactement : on refuse
+        (0.5, "refuse"),
+    ],
+)
 def test_decision_autour_du_seuil(modele, probabilite, decision):
     assert modele.decider(probabilite) == decision
 

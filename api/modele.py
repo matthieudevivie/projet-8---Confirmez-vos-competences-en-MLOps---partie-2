@@ -32,7 +32,6 @@ class ModeleScoring:
         self.variables = list(self.modele.feature_name_)
         self.types = {variable["name"]: variable["type"] for variable in lire_signature(dossier)}
 
-
     def variables_surveillees(self, n_top=10, n_categorielles=2) -> list[str]:
         """Les variables dont on surveille la dérive : le top du gain, plus des variables 0/1 pour le chi²."""
         importances = pd.Series(
@@ -42,13 +41,11 @@ class ModeleScoring:
         categorielles = [nom for nom in importances.index if self.types[nom] == "boolean"][:n_categorielles]
         return top + categorielles
 
-
     def predire(self, client: dict) -> float:
         """Probabilité de défaut d'un client (dictionnaire variable → valeur)."""
         # Une ligne numpy dans l'ordre des variables du modèle : pandas coûtait 75 % du temps
         X = np.array([[client.get(nom) for nom in self.variables]], dtype=np.float64)  # None → NaN
         return float(self.modele.booster_.predict(X)[0])  # le booster renvoie directement P(défaut)
-
 
     def decider(self, probabilite: float) -> str:
         return "refuse" if probabilite >= self.seuil else "accorde"

@@ -6,9 +6,9 @@ Les seuils reprennent la règle d'alerte de notebooks/analyse_drift.ipynb (secti
 import numpy as np
 import pandas as pd
 
-PSI_A_SURVEILLER, PSI_ALERTE = 0.1, 0.25       # dérive d'une variable
-ECART_MANQUANTS_PTS = 10                         # écart de valeurs manquantes, en points
-PSI_SCORES, ECART_REFUS_PTS = 0.1, 5             # dérive des décisions
+PSI_A_SURVEILLER, PSI_ALERTE = 0.1, 0.25  # dérive d'une variable
+ECART_MANQUANTS_PTS = 10  # écart de valeurs manquantes, en points
+PSI_SCORES, ECART_REFUS_PTS = 0.1, 5  # dérive des décisions
 
 
 def calculer_psi(reference, production, n_tranches=10):
@@ -22,10 +22,11 @@ def calculer_psi(reference, production, n_tranches=10):
     else:
         # Variable numérique : tranches de 10 % des clients de RÉFÉRENCE (déciles)
         bornes = np.unique(np.quantile(ref, np.linspace(0, 1, n_tranches + 1)))
-        bornes[0], bornes[-1] = -np.inf, np.inf          # les valeurs hors bornes tombent dans la 1re/dernière tranche
+        # les valeurs hors bornes tombent dans la 1re/dernière tranche
+        bornes[0], bornes[-1] = -np.inf, np.inf
         part_ref = np.histogram(ref, bins=bornes)[0] / len(ref)
         part_prod = np.histogram(prod, bins=bornes)[0] / len(prod)
-    part_ref = np.clip(part_ref, 1e-6, None)             # évite log(0) si une tranche est vide
+    part_ref = np.clip(part_ref, 1e-6, None)  # évite log(0) si une tranche est vide
     part_prod = np.clip(part_prod, 1e-6, None)
     return float(np.sum((part_prod - part_ref) * np.log(part_prod / part_ref)))
 
@@ -65,7 +66,9 @@ def tableau_derive(reference, production):
     for nom in reference.columns:
         psi = calculer_psi(reference[nom], production[nom])
         ecart = (production[nom].isna().mean() - reference[nom].isna().mean()) * 100
-        lignes.append({"variable": nom, "psi": psi, "ecart_manquants_pts": ecart, "niveau": niveau(psi, ecart)})
+        lignes.append(
+            {"variable": nom, "psi": psi, "ecart_manquants_pts": ecart, "niveau": niveau(psi, ecart)}
+        )
     return pd.DataFrame(lignes).set_index("variable")
 
 
@@ -73,5 +76,8 @@ def derive_des_scores(scores_reference, scores_production, seuil):
     """PSI des probabilités prédites et variation du taux de refus : les décisions changent-elles ?"""
     psi = calculer_psi(scores_reference, scores_production)
     ecart_refus = ((scores_production >= seuil).mean() - (scores_reference >= seuil).mean()) * 100
-    return {"psi": psi, "ecart_refus_pts": ecart_refus,
-            "alerte": psi > PSI_SCORES or abs(ecart_refus) > ECART_REFUS_PTS}
+    return {
+        "psi": psi,
+        "ecart_refus_pts": ecart_refus,
+        "alerte": psi > PSI_SCORES or abs(ecart_refus) > ECART_REFUS_PTS,
+    }

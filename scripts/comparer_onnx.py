@@ -35,7 +35,8 @@ print(f"Taille du modèle : pickle {taille_pkl / 1e6:.1f} Mo | ONNX {len(octets)
 def predire_onnx(client: dict) -> float:
     """Même chemin que ModeleScoring.predire, mais avec ONNX Runtime (qui attend du float32)."""
     X = np.array([[client.get(nom) for nom in modele.variables]], dtype=np.float32)
-    return float(session.run(None, {"entree": X})[1][0, 1])  # sortie [1] = probabilités ; colonne 1 = P(défaut)
+    # sortie [1] = probabilités ; colonne 1 = P(défaut)
+    return float(session.run(None, {"entree": X})[1][0, 1])
 
 
 # 2. Précision : 5 000 clients de référence, toutes les prédictions d'un coup

@@ -13,9 +13,11 @@ import pandas as pd
 import streamlit as st
 
 RACINE = Path(__file__).resolve().parent.parent
-sys.path.append(str(RACINE))       # streamlit lance ce fichier comme un script : on rend api/ et dashboard/ importables
-from api.modele import ModeleScoring  # noqa: E402
-from dashboard.indicateurs import derive_des_scores, entrees_en_colonnes, indicateurs_cles, tableau_derive  # noqa: E402
+# streamlit lance ce fichier comme un script : on rend api/ et dashboard/ importables
+sys.path.append(str(RACINE))
+
+from api.modele import ModeleScoring
+from dashboard.indicateurs import derive_des_scores, entrees_en_colonnes, indicateurs_cles, tableau_derive
 
 BASE = RACINE / "logs" / "appels.db"
 REFERENCE = RACINE / "data" / "reference.parquet"
@@ -52,7 +54,9 @@ st.set_page_config(page_title="Monitoring du scoring crédit", layout="wide")
 st.title("Monitoring de l'API de scoring crédit")
 
 if not BASE.exists():
-    st.error(f"Aucune base d'appels trouvée ({BASE.relative_to(RACINE)}) : lancez l'API avec DATABASE_URL (voir le README).")
+    st.error(
+        f"Aucune base d'appels trouvée ({BASE.relative_to(RACINE)}) : lancez l'API avec DATABASE_URL (voir le README)."
+    )
     st.stop()
 
 modele = charger_modele()
@@ -62,11 +66,14 @@ with st.spinner("Calcul des scores de référence (une seule fois)…"):
 
 # --- Fenêtre analysée -------------------------------------------------------------------------
 n_max = len(appels_tous)
-taille = st.sidebar.slider("Fenêtre : derniers appels", min_value=min(100, n_max), max_value=n_max,
-                           value=min(500, n_max), step=100)
+taille = st.sidebar.slider(
+    "Fenêtre : derniers appels", min_value=min(100, n_max), max_value=n_max, value=min(500, n_max), step=100
+)
 appels = appels_tous.tail(taille)
-st.sidebar.caption(f"{appels['date_appel'].min():%d/%m/%Y %H:%M} → {appels['date_appel'].max():%d/%m/%Y %H:%M}  \n"
-                   f"{n_max:,} appels journalisés au total".replace(",", " "))
+st.sidebar.caption(
+    f"{appels['date_appel'].min():%d/%m/%Y %H:%M} → {appels['date_appel'].max():%d/%m/%Y %H:%M}  \n"
+    f"{n_max:,} appels journalisés au total".replace(",", " ")
+)
 if taille < 500:
     st.sidebar.warning("Sous 500 appels, le PSI déclenche de fausses alertes (voir le notebook, section 7).")
 
@@ -88,25 +95,43 @@ message = f"PSI des scores : {derive['psi']:.3f} · taux de refus : {derive['eca
 (st.error if derive["alerte"] else st.success)(("Alerte — " if derive["alerte"] else "Stable — ") + message)
 
 tranches = np.linspace(0, 0.5, 51)
-donnees = pd.concat([distribution(scores_reference, "référence", tranches),
-                     distribution(scores_production, "production", tranches)])
-courbes = alt.Chart(donnees).mark_line(interpolate="step-after").encode(
-    x=alt.X("score:Q", title="probabilité de défaut prédite (au-delà de 0,5 : regroupée à droite)"),
-    y=alt.Y("part_pct:Q", title="part des clients (%)"),
-    color=alt.Color("source:N", title=None),
+donnees = pd.concat(
+    [
+        distribution(scores_reference, "référence", tranches),
+        distribution(scores_production, "production", tranches),
+    ]
 )
-seuil = alt.Chart(pd.DataFrame({"seuil": [modele.seuil]})).mark_rule(strokeDash=[4, 4]).encode(x="seuil:Q", color=alt.value("red"))
+courbes = (
+    alt.Chart(donnees)
+    .mark_line(interpolate="step-after")
+    .encode(
+        x=alt.X("score:Q", title="probabilité de défaut prédite (au-delà de 0,5 : regroupée à droite)"),
+        y=alt.Y("part_pct:Q", title="part des clients (%)"),
+        color=alt.Color("source:N", title=None),
+    )
+)
+seuil = (
+    alt.Chart(pd.DataFrame({"seuil": [modele.seuil]}))
+    .mark_rule(strokeDash=[4, 4])
+    .encode(x="seuil:Q", color=alt.value("red"))
+)
 st.altair_chart(courbes + seuil, width="stretch")
 st.caption(f"Ligne rouge : seuil de décision ({modele.seuil}). Au-dessus, le crédit est refusé.")
 
 # --- Temps de réponse -------------------------------------------------------------------------
 st.header("Temps de réponse")
 reussis = appels[appels["statut_http"] == 200].reset_index(drop=True)
-temps = pd.DataFrame({
-    "latence totale (ms)": reussis["duree_ms"].rolling(50, min_periods=1).median(),
-    "inférence du modèle (ms)": reussis["duree_inference_ms"].rolling(50, min_periods=1).median(),
-})
-st.line_chart(temps, x_label="appels réussis, du plus ancien au plus récent", y_label="médiane glissante sur 50 appels (ms)")
+temps = pd.DataFrame(
+    {
+        "latence totale (ms)": reussis["duree_ms"].rolling(50, min_periods=1).median(),
+        "inférence du modèle (ms)": reussis["duree_inference_ms"].rolling(50, min_periods=1).median(),
+    }
+)
+st.line_chart(
+    temps,
+    x_label="appels réussis, du plus ancien au plus récent",
+    y_label="médiane glissante sur 50 appels (ms)",
+)
 erreurs = appels["statut_http"].value_counts().rename_axis("statut HTTP").to_frame("appels")
 st.dataframe(erreurs)
 
@@ -115,10 +140,13 @@ st.header("Dérive des variables surveillées")
 production = entrees_en_colonnes(appels)
 tableau = tableau_derive(reference, production)
 st.dataframe(
-    tableau.style.format({"psi": "{:.3f}", "ecart_manquants_pts": "{:+.1f}"})
-    .map(lambda n: f"background-color: {COULEURS[n]}; color: black", subset=["niveau"]),
+    tableau.style.format({"psi": "{:.3f}", "ecart_manquants_pts": "{:+.1f}"}).map(
+        lambda n: f"background-color: {COULEURS[n]}; color: black", subset=["niveau"]
+    ),
     column_config={"psi": "PSI", "ecart_manquants_pts": "écart de manquants (points)", "niveau": "niveau"},
     height=35 * (len(tableau) + 1) + 3,  # toutes les variables visibles, sans barre de défilement
 )
-st.caption("Alerte : PSI > 0,25 ou écart de valeurs manquantes > 10 points · à surveiller : PSI entre 0,1 et 0,25. "
-           f"Détail par variable : [rapport Evidently]({URL_RAPPORT}).")
+st.caption(
+    "Alerte : PSI > 0,25 ou écart de valeurs manquantes > 10 points · à surveiller : PSI entre 0,1 et 0,25. "
+    f"Détail par variable : [rapport Evidently]({URL_RAPPORT})."
+)
