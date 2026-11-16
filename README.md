@@ -272,10 +272,6 @@ black), `pylint --fail-under=9.5`, et la couverture de test.
 
 Les rares exceptions aux règles sont écrites et justifiées dans [`pyproject.toml`](pyproject.toml).
 
-### Demo soutenance
-
-Lorem ipsum, pour montrer le chemin d'une PR
-
 ## Avancement
 
 - [x] Étape 1 — Dépôt Git et structure du projet
